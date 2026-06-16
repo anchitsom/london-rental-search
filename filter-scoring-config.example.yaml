@@ -1,0 +1,338 @@
+# rental-engine unified filter and scoring config
+# Version: 1.1  (2026-05-04, decisions applied)
+#
+# Single human-authored surface for every filter and scoring decision.
+# Hard filters: a listing failing any of these is dropped before scoring.
+# Scoring: gradient applied to listings that pass all hard filters.
+# Region tiers: inline here; tiers.yaml is deprecated once this file is active.
+#
+# Do not hand-edit BUDGET_MAX, SIZE_MIN_SQFT, or tier scores in scorer.py.
+# Those constants are dead once this file is the active config.
+# Scrape-stage parameters (radius, max_results, page_delay, scrape_delay)
+# and region IDs stay in london-search.yaml -- those are not filter or scoring
+# decisions, they are query-construction parameters.
+
+hard_filters:
+
+  # Price in pounds per calendar month.
+  # Listings outside this range are dropped before scoring.
+  price:
+    min: 1600
+    max: 2800
+
+  # Bedroom count.
+  # User decision 2026-05-04: keep max at 2. Three-bedroom flats are out of scope.
+  # The "ideal" is 2; 1-bed survives the filter but scores lower (see scoring.bedrooms).
+  bedrooms:
+    min: 1
+    max: 2
+
+  # EPC energy rating (A best, G worst).
+  # User decision 2026-05-04: D is the floor. Anything below D (E, F, G) is
+  # dropped. D itself survives. This is more permissive than the original
+  # C-floor proposal so that listings whose only weakness is energy efficiency
+  # can still surface, with the soft EPC score (below) producing the gradient
+  # that pushes them down the ranking.
+  epc_min_rating: D
+
+  # Null EPC handling.
+  # User decision 2026-05-04: null EPC is NOT a hard kill. The listing passes
+  # the hard filter and is scored with the lowest EPC score (see
+  # scoring.components.epc.null_score). This avoids letting an enrichment
+  # failure look like a quality verdict, while still ensuring null-EPC listings
+  # rank below those with a confirmed rating.
+  # Coverage gap is tracked separately: docs/plans/2026-05-04-epc-enrichment-investigation.md.
+  epc_drop_null: false
+
+  # TfL zone maximum.
+  # Zone 4 and above means the commute geometry is wrong regardless of journey time.
+  tfl_zone_max: 3
+
+  # Minimum size in sqft.
+  # User decision 2026-05-04: hard filter at 400 sqft. Below that the unit is
+  # almost always a studio mislabelled as a flat or a room let.
+  # Null sqft passes through this filter (size enrichment via floorplan vision
+  # and EPC fallback is still maturing; dropping null would penalise listings
+  # where enrichment failed rather than listings that are actually small).
+  size_sqft_min: 400
+
+  # Let-agreed title-derived flag (2026-05-10).
+  # Drops listings whose scraped title contains let-agreed / under-offer
+  # markers. Today this captures near-zero rows because both portals' page
+  # scrapers do not surface these badges through the title; the filter is
+  # in place so future scraper updates that populate the field flow into
+  # production without code changes.
+  drop_let_agreed: true
+
+  # Region soft signal (2026-05-08: demoted from hard filter).
+  # Listings outside the allowlist are kept in the DB but penalised in
+  # ranking via the scoring.components.region_tier component (weight 0.05).
+  # null and 'Other' regions also pass; they score 0 on the region_tier
+  # component, so they sit at the bottom of the ranking until the user
+  # decides to bump the weight via a sift session.
+  # Set region_drop_unlisted: true to restore the hard-drop behaviour.
+  region_drop_unlisted: false
+
+  # Allowlist (informational; only enforced when region_drop_unlisted is true).
+  # Names must match exactly what homehunt/region.py produces (nearest centroid name).
+  # This list is the union of all tiers below. The source of truth for membership
+  # is this list, not tiers.yaml (which is deprecated).
+  regions:
+    - Shoreditch, East London
+    - Hoxton, North London
+    - Haggerston, East London
+    - Dalston, East London
+    - London Fields, East London
+    - De Beauvoir Town, North London
+    - Stoke Newington, North London
+    - Homerton, East London
+    - Clapton, East London
+    - Hackney Wick, East London
+    - Finsbury Park, North London
+    - Islington, North London
+    - Highbury, North London
+    - Canonbury, North London
+    - Barnsbury, North London
+    - Kings Cross, North London
+    - Holloway, North London
+    - Lower Holloway, North London
+    - Upper Holloway, North London
+    - Tufnell Park, North London
+    - Archway, London
+    - Fitzrovia, London
+    - Bloomsbury, Central London
+    - Holborn, Central London
+    - Camden Town, North West London
+    - Kentish Town, North West London
+    - Primrose Hill, North West London
+    - Belsize Park, North West London
+    - Chalk Farm, North West London
+    - Hampstead, North West London
+    - Walthamstow
+    - Tottenham Hale
+    - Seven Sisters
+    - Blackhorse Road
+
+
+scoring:
+
+  # Weights must sum to 1.0.
+  # These are the human-authored seed weights. The scoring_weights table stores
+  # learned rows from sift sessions. Runtime reads the most recent table row;
+  # falls back to these yaml values when the table is empty or missing.
+  #
+  # region_tier weight is intentionally 0.0 in the seed: region membership is
+  # already a hard filter above, so region_tier starts as a neutral gradient
+  # and only acquires a non-zero weight after the first sift session confirms
+  # the user's preference pattern.
+
+  components:
+
+    # Phase A weight rebalance (2026-05-10):
+    #   carpet:  0.20 -> 0.25  (carpet dominates rejection reasoning)
+    #   size:    0.15 -> 0.20  ("too small" mentioned 5+ times in bad-tier)
+    #   epc:     0.10 -> 0.05  (anti-aligned in calibration; user forgives bad EPC on a good house)
+    #   outside: 0.05 -> 0.0   (anti-aligned in calibration; outside space rarely positive in user reasoning)
+    # Sum unchanged at 1.00.
+
+    price:
+      weight: 0.25
+      # Linear interpolation between full_marks_at_or_below and zero_marks_at_or_above.
+      full_marks_at_or_below: 2800
+      zero_marks_at_or_above: 3200
+
+    # Carpet (2026-06-08): binary room-agnostic component. Any carpet in any
+    # listing photo is one fixed low score; no carpet gets full marks. The
+    # legacy count/split fields remain in the DB but are written NULL by the
+    # active detector.
+    # The legacy carpet_bedroom and carpet_other_areas blocks are kept at
+    # weight 0.0 so the scorer's backward-compat fallback still parses for
+    # rows whose detector pre-dates the count fields. They do not
+    # contribute to the score.
+
+    carpet:
+      weight: 0.25
+      detected_score: 20
+      not_detected_score: 100
+      null_score: 50
+
+    carpet_bedroom:
+      weight: 0.0
+      detected_score: 30
+      not_detected_score: 100
+      null_score: 50
+
+    carpet_other_areas:
+      weight: 0.0
+      detected_score: 0
+      not_detected_score: 100
+      null_score: 50
+
+    size:
+      weight: 0.20
+      full_marks_at_or_above_sqft: 650
+      zero_marks_at_or_below_sqft: 400
+      null_score: 50
+
+    bedrooms:
+      weight: 0.10
+      # 2026-05-08: weight reduced from 0.15 to 0.10 so the freed 0.05 can
+      # go to region_tier (now an active soft signal after region was
+      # demoted from a hard filter). Bedrooms is binary in practice (1 or
+      # 2 both score 100), so the lost weight has limited information cost.
+      # max=2 hard filter above; 3 cannot appear in scoring. Score map kept
+      # for completeness so a config typo bumping max to 3 does not silently
+      # produce undefined scores.
+      scores:
+        3: 100
+        2: 100
+        1: 50
+        0: 0
+      null_score: 0
+
+    epc:
+      weight: 0.05
+      # D is the new floor (2026-05-04); D survives the hard filter and scores
+      # 40, well below A/B/C at 100. Null is NOT dropped by the filter and
+      # scores 0 here so listings without an EPC rating sit at the bottom of
+      # the ranking. E, F, G cannot appear in scored listings (filtered above)
+      # but are listed for completeness and test fixture support.
+      scores:
+        A: 100
+        B: 100
+        C: 100
+        D: 40
+        E: 0
+        F: 0
+        G: 0
+      null_score: 0
+
+    transport:
+      weight: 0.10
+      # journey_score thresholds (minutes via TfL Journey Planner)
+      journey_minutes:
+        - { at_or_below: 15, score: 100 }
+        - { at_or_below: 25, score: 80 }
+        - { at_or_below: 35, score: 60 }
+        - { at_or_below: 45, score: 30 }
+        - { above: 45, score: 0 }
+      # zone_score blended in at 25% weight within this component
+      zone_scores:
+        1: 100
+        2: 100
+        3: 50
+        4: 0
+      journey_zone_blend: 0.75   # journey = 75%, zone = 25%
+      null_score: 50
+
+    outside:
+      weight: 0.0
+      scores:
+        garden: 100
+        balcony: 60
+        none: 0
+
+    # Phase A new components (2026-05-10). All at weight 0 initially:
+    # the columns are populated by the scrape pipeline so the data is
+    # collected, but the components do not contribute to the score until
+    # a future calibration cycle tunes their weights. Keeping them at 0
+    # decouples data collection from scoring decisions.
+
+    floor_level_high:
+      weight: 0.0
+      # Soft penalty above floor 10. Below 4 = full marks.
+      tiers:
+        - { at_or_below: 3, score: 100 }
+        - { at_or_below: 6, score: 90 }
+        - { at_or_below: 10, score: 70 }
+        - { above: 10, score: 30 }
+      null_score: 50
+
+    photo_count:
+      weight: 0.0
+      # Hard filter at >= N is deferred until the Rightmove scraper
+      # captures more than 3 photos per listing. Soft signal only:
+      # listings with very few photos sit lower in ranking.
+      tiers:
+        - { at_or_below: 2, score: 30 }
+        - { at_or_below: 4, score: 70 }
+        - { above: 4, score: 100 }
+      null_score: 50
+
+    size_sqft_credibility:
+      weight: 0.0
+      # trusted = scraper and floorplan agree within 10%.
+      # conflict = disagreement (often signals a wrong-unit floorplan extraction).
+      # missing = either side null; treat as neutral until floorplan vision matures.
+      scores:
+        trusted: 100
+        missing: 50
+        conflict: 30
+      null_score: 50
+
+    region_tier:
+      weight: 0.05
+      # 2026-05-08: weight bumped from 0.0 to 0.05 because region was
+      # demoted from a hard filter to a soft signal. Out-of-area listings
+      # now score 5 points lower than tier-1 listings on this component
+      # rather than being dropped, so they remain visible but rank below
+      # the curated 30 neighbourhoods. Future sift sessions can override.
+      tier_1: 100
+      tier_2: 75
+      tier_3: 50
+      unlisted: 75   # region passes hard filter but has no tier assignment
+
+
+# Region tier definitions.
+# Folded into this file from tiers.yaml.
+# Keys must match region names in hard_filters.regions above.
+# unlisted means: passed the hard filter (name is in regions above)
+# but no tier has been assigned. Default score is region_tier.unlisted above.
+#
+# Rationale for inlining rather than pointing to tiers.yaml:
+# One file is the entire configuration surface. A user manipulating this file
+# does not need to open a second file to understand why a region scores the way
+# it does. The region_id values are left in london-search.yaml because they are
+# Rightmove query parameters, not filter or scoring decisions.
+
+regions_by_tier:
+
+  tier_1:
+    - Shoreditch, East London
+    - Hoxton, North London
+    - Haggerston, East London
+    - Dalston, East London
+    - London Fields, East London
+    - De Beauvoir Town, North London
+    - Stoke Newington, North London
+    - Homerton, East London
+    - Clapton, East London
+    - Hackney Wick, East London
+    - Finsbury Park, North London
+    - Islington, North London
+    - Highbury, North London
+    - Canonbury, North London
+    - Barnsbury, North London
+    - Kings Cross, North London
+
+  tier_2:
+    - Holloway, North London
+    - Lower Holloway, North London
+    - Upper Holloway, North London
+    - Tufnell Park, North London
+    - Archway, London
+    - Fitzrovia, London
+    - Bloomsbury, Central London
+    - Holborn, Central London
+
+  tier_3:
+    - Camden Town, North West London
+    - Kentish Town, North West London
+    - Primrose Hill, North West London
+    - Belsize Park, North West London
+    - Chalk Farm, North West London
+    - Hampstead, North West London
+    - Walthamstow
+    - Tottenham Hale
+    - Seven Sisters
+    - Blackhorse Road

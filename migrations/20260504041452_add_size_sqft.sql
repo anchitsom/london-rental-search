@@ -1,0 +1,24 @@
+-- Migration: add size_sqft to listing table
+-- Revision: 20260504041452
+-- Agent: wave1-A-nlp-extractor
+--
+-- Applies to: existing databases where the listing table was created before
+-- size_sqft was added to the Listing SQLModel in homehunt/core/db.py.
+--
+-- For fresh databases, SQLModel.metadata.create_all (called via db.create_tables)
+-- will include size_sqft automatically. This migration is only needed for
+-- existing homehunt.db instances that predate the SQLModel field addition.
+--
+-- Safe to run multiple times: SQLite ALTER TABLE ADD COLUMN fails silently
+-- if wrapped in the IF NOT EXISTS guard below. Because SQLite does not support
+-- IF NOT EXISTS on ALTER TABLE directly, the recommended approach is to catch
+-- the error at the application layer or check the pragma first.
+--
+-- To apply manually:
+--   sqlite3 homehunt.db < migrations/20260504041452_add_size_sqft.sql
+--
+-- To apply idempotently from Python:
+--   conn.execute("ALTER TABLE listing ADD COLUMN size_sqft INTEGER NULL")
+--   (wrap in try/except sqlite3.OperationalError for "duplicate column name")
+
+ALTER TABLE listing ADD COLUMN size_sqft INTEGER NULL;

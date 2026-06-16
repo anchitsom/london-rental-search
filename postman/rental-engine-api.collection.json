@@ -1,0 +1,278 @@
+{
+  "info": {
+    "_postman_id": "bcbca0a4-c852-40ca-982d-d08359528d08",
+    "name": "rental-engine: internal FastAPI",
+    "description": "rental-engine's own FastAPI surface at 127.0.0.1:8000.\n\nAuth: none (localhost-only service).\nBase URL: http://127.0.0.1:8000\n\nCurrent routes (as of Wave 1 / postman-mcp-install branch):\n  GET /        - score-sorted HTML table, auto-refreshes every 60s\n  GET /api/listings - JSON listing data\n  POST /run    - trigger a scrape cycle (runs run.py in background)\n\nWave 2 routes (placeholder - Agent G):\n  GET /viewer  - card-based listing viewer with sort/filter/paginate\n\nWave 3 routes (placeholder - Agents H and I):\n  GET /sift\n  POST /sift/submit\n  GET /sift/{session_id}/propose\n  POST /sift/{session_id}/apply\n\nUpdate this collection in the same PR as the route implementation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "createdAt": "2026-05-04T05:12:53.000Z",
+    "updatedAt": "2026-05-04T05:12:53.000Z",
+    "lastUpdatedBy": "30950434",
+    "uid": "30950434-bcbca0a4-c852-40ca-982d-d08359528d08"
+  },
+  "item": [
+    {
+      "name": "GET / - Score-sorted HTML table",
+      "id": "60e870b7-21fa-4cea-9ba4-761b7f56d6dc",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "text/html"
+          }
+        ],
+        "url": {
+          "raw": "{{internal_api_base_url}}/",
+          "host": [
+            "{{internal_api_base_url}}"
+          ],
+          "path": [
+            ""
+          ]
+        },
+        "description": "Root route. Returns an HTML table of all active listings sorted by score DESC, price ASC. Auto-refreshes every 60s.\n\nResponse: 200 OK with HTML content. The table is colour-coded: green >= 80, amber 60-79, red < 60.\n\nNote: This route is the current production surface. The Wave 2 /viewer route will supersede it as the primary UI."
+      },
+      "response": [
+        {
+          "id": "84647878-a146-41d7-b748-66a1cca2da5f",
+          "name": "GET / - HTML table (service running)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": ""
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "Text",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "text/html; charset=utf-8"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "<!DOCTYPE html><html lang=\"en\"><head><title>HomeHunt</title></head><body><h1>HomeHunt</h1><div class=\"meta\">42 listings &mdash; 8 above threshold &mdash; Last updated: 2026-05-04 05:00 UTC</div><!-- Full HTML table truncated - run live to see. Score-sorted, colour-coded. --></body></html>",
+          "createdAt": "2026-05-04T05:12:53.000Z",
+          "updatedAt": "2026-05-04T05:12:53.000Z",
+          "uid": "30950434-84647878-a146-41d7-b748-66a1cca2da5f"
+        }
+      ],
+      "createdAt": "2026-05-04T05:12:53.000Z",
+      "updatedAt": "2026-05-04T05:12:53.000Z",
+      "uid": "30950434-60e870b7-21fa-4cea-9ba4-761b7f56d6dc"
+    },
+    {
+      "name": "GET /api/listings - JSON listing data",
+      "id": "38d1d577-76f9-413f-a84f-2731f7ac8c80",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{internal_api_base_url}}/api/listings",
+          "host": [
+            "{{internal_api_base_url}}"
+          ],
+          "path": [
+            "api",
+            "listings"
+          ]
+        },
+        "description": "JSON endpoint. Returns all active listings sorted by score DESC. Fields include: uid, portal, url, title, price, price_numeric, bedrooms, property_type, area, postcode, address, garden, balcony, tube_distance, cycle_canary_wharf, commute_canary_wharf, commute_whitechapel, commute_pass_40min, size_sqft, epc_rating, carpet_detected, carpet_confidence, carpet_in_bedroom, carpet_other_areas, score, property_metadata (JSON blob with score_breakdown), first_seen, last_scraped, is_active."
+      },
+      "response": [
+        {
+          "id": "9723741e-849b-45b9-b05d-ff0394d9ffc0",
+          "name": "GET /api/listings - sample JSON array",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": ""
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "Text",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "[{\"uid\": \"rm_abc123def456\", \"portal\": \"rightmove\", \"url\": \"https://www.rightmove.co.uk/properties/12345678\", \"title\": \"2 bedroom flat in Dalston\", \"price\": \"1800 pcm\", \"price_numeric\": 180000, \"bedrooms\": 2, \"property_type\": \"Flat\", \"area\": \"Dalston\", \"postcode\": \"E8 1DP\", \"address\": \"Flat 2, 33 Horton Road, London E8 1DP\", \"garden\": false, \"balcony\": true, \"tube_distance\": 8, \"cycle_canary_wharf\": 28, \"commute_canary_wharf\": 36, \"commute_whitechapel\": null, \"commute_pass_40min\": false, \"size_sqft\": 720, \"epc_rating\": \"C\", \"carpet_detected\": false, \"carpet_confidence\": 0.91, \"carpet_in_bedroom\": false, \"carpet_other_areas\": false, \"score\": 74, \"property_metadata\": \"{\\\"score_breakdown\\\": {\\\"epc\\\": 100, \\\"commute\\\": 60, \\\"size\\\": 72, \\\"bedrooms\\\": 100, \\\"price\\\": 80, \\\"carpet\\\": 100, \\\"garden\\\": 0, \\\"region_pref\\\": 75}}\", \"first_seen\": \"2026-05-01T09:00:00\", \"last_scraped\": \"2026-05-04T09:00:00\", \"is_active\": 1}]",
+          "createdAt": "2026-05-04T05:12:53.000Z",
+          "updatedAt": "2026-05-04T05:12:53.000Z",
+          "uid": "30950434-9723741e-849b-45b9-b05d-ff0394d9ffc0"
+        }
+      ],
+      "createdAt": "2026-05-04T05:12:53.000Z",
+      "updatedAt": "2026-05-04T05:12:53.000Z",
+      "uid": "30950434-38d1d577-76f9-413f-a84f-2731f7ac8c80"
+    },
+    {
+      "name": "POST /run - trigger scrape",
+      "id": "d9ef819d-9104-48a4-ae73-73b8ec3426ce",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{internal_api_base_url}}/run",
+          "host": [
+            "{{internal_api_base_url}}"
+          ],
+          "path": [
+            "run"
+          ]
+        },
+        "description": "Trigger a homehunt scrape cycle. Runs run.py in a background subprocess (fire-and-forget). Returns immediately with a status message.\n\nConfig: uses HOMEHUNT_CONFIG env var (default: london-search.yaml). The venv python at .venv/bin/python is hardcoded in api.py.\n\nNote: this is a fire-and-forget endpoint. HTTP 200 means the subprocess was started, not that the scrape completed."
+      },
+      "response": [
+        {
+          "id": "9c8db3b4-5371-4c12-ae95-d33d5dfdb624",
+          "name": "POST /run - scrape started",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": ""
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "Text",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "{\"message\": \"Scrape started (config: london-search.yaml)\"}",
+          "createdAt": "2026-05-04T05:12:53.000Z",
+          "updatedAt": "2026-05-04T05:12:53.000Z",
+          "uid": "30950434-9c8db3b4-5371-4c12-ae95-d33d5dfdb624"
+        },
+        {
+          "id": "3618f800-93d9-4911-8f01-6f997d64542c",
+          "name": "POST /run - 500 if subprocess fails to launch",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": ""
+            }
+          },
+          "status": "Internal Server Error",
+          "code": 500,
+          "_postman_previewlanguage": "Text",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "{\"detail\": \"[Errno 2] No such file or directory: '.venv/bin/python'\"}",
+          "createdAt": "2026-05-04T05:12:53.000Z",
+          "updatedAt": "2026-05-04T05:12:53.000Z",
+          "uid": "30950434-3618f800-93d9-4911-8f01-6f997d64542c"
+        }
+      ],
+      "createdAt": "2026-05-04T05:12:53.000Z",
+      "updatedAt": "2026-05-04T05:12:53.000Z",
+      "uid": "30950434-d9ef819d-9104-48a4-ae73-73b8ec3426ce"
+    },
+    {
+      "name": "GET /viewer - PLACEHOLDER (Wave 2 Agent G)",
+      "id": "5463665a-4f03-412d-a67e-68a7f51daff5",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "text/html"
+          }
+        ],
+        "url": {
+          "raw": "{{internal_api_base_url}}/viewer?sort=score_desc&page=1",
+          "host": [
+            "{{internal_api_base_url}}"
+          ],
+          "path": [
+            "viewer"
+          ],
+          "query": [
+            {
+              "key": "sort",
+              "value": "score_desc",
+              "description": "Options: score_desc, price_asc, sqft_desc, first_seen_desc"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "Page number (20 cards per page)"
+            },
+            {
+              "key": "source",
+              "value": "",
+              "description": "Filter by portal (e.g. rightmove)",
+              "disabled": true
+            },
+            {
+              "key": "region",
+              "value": "",
+              "description": "Filter by sub-neighbourhood",
+              "disabled": true
+            },
+            {
+              "key": "beds",
+              "value": "",
+              "description": "Filter by bedroom count",
+              "disabled": true
+            },
+            {
+              "key": "epc",
+              "value": "",
+              "description": "Filter by EPC band (A-G)",
+              "disabled": true
+            },
+            {
+              "key": "max_price",
+              "value": "",
+              "description": "Maximum price pcm",
+              "disabled": true
+            },
+            {
+              "key": "min_sqft",
+              "value": "",
+              "description": "Minimum floor area in sqft",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "PLACEHOLDER - Endpoint added in Wave 2 (Agent G). Update this request once the route lands.\n\nExpected: GET /viewer returns HTML with card list of listings. Sort options: score_desc, price_asc, sqft_desc, first_seen_desc. Filter options: source, region, beds, epc, max_price, min_sqft. Pagination: 20 cards per page via ?page=N.\n\nEach card renders: score, price, bedrooms, area, EPC rating, commute times, carpet flags, garden/balcony, photo carousel, expandable EPC details panel (all 20 EPC fields when matched).\n\nWhen EPC enrichment missed, card shows a hairline 'EPC unmatched' note instead of the panel."
+      },
+      "response": [],
+      "createdAt": "2026-05-04T05:12:53.000Z",
+      "updatedAt": "2026-05-04T05:12:53.000Z",
+      "uid": "30950434-5463665a-4f03-412d-a67e-68a7f51daff5"
+    }
+  ]
+}

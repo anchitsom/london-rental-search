@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.anchitsom.rental-engine</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/path/to/london-rental-engine/.venv/bin/python</string>
+    <string>-m</string>
+    <string>uvicorn</string>
+    <string>homehunt.api:app</string>
+    <string>--host</string>
+    <string>0.0.0.0</string>
+    <string>--port</string>
+    <string>8000</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/path/to/london-rental-engine</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/path/to/london-rental-engine/.venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>OLLAMA_URL</key>
+    <string>http://127.0.0.1:11434</string>
+    <key>HOMEHUNT_DB</key>
+    <string>/path/to/london-rental-engine/data/homehunt.db</string>
+    <key>HOMEHUNT_CONFIG</key>
+    <string>london-search.yaml</string>
+    <key>TFL_DESTINATION</key>
+    <string>Old Street Station, London</string>
+    <key>VISION_MODEL</key>
+    <string>qwen3-vl:2b-instruct-q8_0</string>
+    <key>CARPET_PHOTOS_TO_CHECK</key>
+    <string>8</string>
+    <key>CARPET_IMG_MAX_EDGE</key>
+    <string>1280</string>
+    <key>ALERT_THRESHOLD</key>
+    <string>60</string>
+    <key>ENABLED_PORTALS</key>
+    <string>rightmove,zoopla,openrent</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/path/to/london-rental-engine/logs/rental-engine.log</string>
+  <key>StandardErrorPath</key>
+  <string>/path/to/london-rental-engine/logs/rental-engine.log</string>
+
+  <key>KeepAlive</key>
+  <true/>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>

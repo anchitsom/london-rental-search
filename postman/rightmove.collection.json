@@ -1,0 +1,304 @@
+{
+  "info": {
+    "_postman_id": "24dfef4b-a18d-4766-a0bb-34ed9c543b12",
+    "name": "rental-engine: Rightmove HTTP",
+    "description": "Rightmove search discovery via plain HTTP (scraped). No auth required. Realistic browser headers are required.\n\nBase URL: https://www.rightmove.co.uk\nTypeahead: https://los.rightmove.co.uk/typeahead\n\nFlow per discover_properties() call:\n1. Resolve location name to locationIdentifier via typeahead API (or use known-ID table)\n2. Fetch paginated search pages\n3. Extract property IDs from __NEXT_DATA__ JSON embedded in each page\n4. Return deduplicated property URLs\n\nKnown region IDs for the rental-engine search profile are in rightmove_api.py's _KNOWN_IDS table, populated by scripts/resolve_region_ids.py. Never hand-enter these.\n\nIMPORTANT: Rightmove may block programmatic requests in some environments. The pipeline uses a 1.5s page delay. If blocked, the response will be a redirect to rightmove.co.uk/error/ or a page-not-found URL.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "createdAt": "2026-05-04T05:12:09.000Z",
+    "updatedAt": "2026-05-04T05:12:09.000Z",
+    "lastUpdatedBy": "30950434",
+    "uid": "30950434-24dfef4b-a18d-4766-a0bb-34ed9c543b12"
+  },
+  "item": [
+    {
+      "name": "Typeahead - resolve location name to ID",
+      "id": "907fad85-d844-4495-bf08-aeb4babe70a7",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          },
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Referer",
+            "value": "https://www.rightmove.co.uk/"
+          }
+        ],
+        "url": {
+          "raw": "los.rightmove.co.uk/typeahead?query=Dalston&limit=10",
+          "host": [
+            "los",
+            "rightmove",
+            "co",
+            "uk"
+          ],
+          "path": [
+            "typeahead"
+          ],
+          "query": [
+            {
+              "key": "query",
+              "value": "Dalston",
+              "description": "Location search string"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Resolve a location name to a Rightmove REGION^ID. The pipeline uses the first match with type='REGION'.\n\nNote: The typeahead endpoint is on los.rightmove.co.uk, not www.rightmove.co.uk. The www.rightmove.co.uk/typeAhead/... endpoint returns 404.\n\nResult format: {matches: [{id, type, displayName}]}. Build locationIdentifier as f\"{match['type']}^{match['id']}\"."
+      },
+      "response": [
+        {
+          "id": "b2003ec4-47e4-40b2-a4ad-2ab5c943b998",
+          "name": "Dalston typeahead - REGION^85389",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": ""
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "Text",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "{\"matches\": [{\"id\": \"85389\", \"type\": \"REGION\", \"displayName\": \"Dalston, East London\", \"highlighting\": \"<span class='highlightLetter'>Dalston</span>, East London\", \"highlights\": [{\"text\": \"Dalston\", \"highlighted\": true}, {\"text\": \", East London\", \"highlighted\": false}]}, {\"id\": \"7894\", \"type\": \"REGION\", \"displayName\": \"Dalston, Carlisle, Cumbria\", \"highlighting\": \"<span class='highlightLetter'>Dalston</span>, Carlisle, Cumbria\", \"highlights\": [{\"text\": \"Dalston\", \"highlighted\": true}, {\"text\": \", Carlisle, Cumbria\", \"highlighted\": false}]}, {\"id\": \"2606\", \"type\": \"STATION\", \"displayName\": \"Dalston Station\", \"highlighting\": \"<span class='highlightLetter'>Dalston</span> Station\", \"highlights\": [{\"text\": \"Dalston\", \"highlighted\": true}, {\"text\": \" Station\", \"highlighted\": false}]}, {\"id\": \"15132\", \"type\": \"STATION\", \"displayName\": \"Dalston Junction Station\", \"highlighting\": \"<span class='highlightLetter'>Dalston</span> Junction Station\", \"highlights\": [{\"text\": \"Dalston\", \"highlighted\": true}, {\"text\": \" Junction Station\", \"highlighted\": false}]}, {\"id\": \"2603\", \"type\": \"STATION\", \"displayName\": \"Dalston Kingsland Station\", \"highlighting\": \"<span class='highlightLetter'>Dalston</span> Kingsland Station\", \"highlights\": [{\"text\": \"Dalston\", \"highlighted\": true}, {\"text\": \" Kingsland Station\", \"highlighted\": false}]}]}",
+          "createdAt": "2026-05-04T05:12:10.000Z",
+          "updatedAt": "2026-05-04T05:12:10.000Z",
+          "uid": "30950434-b2003ec4-47e4-40b2-a4ad-2ab5c943b998"
+        }
+      ],
+      "createdAt": "2026-05-04T05:12:10.000Z",
+      "updatedAt": "2026-05-04T05:12:10.000Z",
+      "uid": "30950434-907fad85-d844-4495-bf08-aeb4babe70a7"
+    },
+    {
+      "name": "Property Search - populated borough (Dalston)",
+      "id": "ec8b11c2-b67d-479d-9962-0b94a3fbc82c",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          },
+          {
+            "key": "Accept",
+            "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+          },
+          {
+            "key": "Accept-Language",
+            "value": "en-GB,en;q=0.5"
+          }
+        ],
+        "url": {
+          "raw": "{{rightmove_base_url}}/property-to-rent/find.html?locationIdentifier=REGION^85389&sortType=6&channel=RENT&includeLetAgreed=false&dontShow=houseShare,retirement,student&propertyTypes=flat&index=0&radius=0.5&maxPrice=2800&minBedrooms=1&maxBedrooms=2",
+          "host": [
+            "{{rightmove_base_url}}"
+          ],
+          "path": [
+            "property-to-rent",
+            "find.html"
+          ],
+          "query": [
+            {
+              "key": "locationIdentifier",
+              "value": "REGION^85389",
+              "description": "Dalston, East London region ID"
+            },
+            {
+              "key": "sortType",
+              "value": "6",
+              "description": "Sort by most recent"
+            },
+            {
+              "key": "channel",
+              "value": "RENT"
+            },
+            {
+              "key": "includeLetAgreed",
+              "value": "false"
+            },
+            {
+              "key": "dontShow",
+              "value": "houseShare,retirement,student"
+            },
+            {
+              "key": "propertyTypes",
+              "value": "flat"
+            },
+            {
+              "key": "index",
+              "value": "0",
+              "description": "Page offset (24 per page)"
+            },
+            {
+              "key": "radius",
+              "value": "0.5"
+            },
+            {
+              "key": "maxPrice",
+              "value": "2800"
+            },
+            {
+              "key": "minBedrooms",
+              "value": "1"
+            },
+            {
+              "key": "maxBedrooms",
+              "value": "2"
+            }
+          ]
+        },
+        "description": "Rightmove property-to-rent search for Dalston flats. The pipeline hits this endpoint per page. Properties are extracted from __NEXT_DATA__ JSON embedded in the HTML response (props.pageProps.searchResults.properties or searchResult.listings).\n\nThe sample response is the parsed __NEXT_DATA__ content (truncated to 2 properties). The actual HTTP response is HTML (950KB+ for London areas)."
+      },
+      "response": [
+        {
+          "id": "b59a32c3-acb1-4dbf-abe9-54bc65ef95d2",
+          "name": "Dalston REGION^85389 - 170 total, 25 on page (truncated to 2)",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": ""
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "Text",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "{\"resultCount\": \"170\", \"properties_sample_count\": 2, \"properties\": [{\"id\": 173953211, \"bedrooms\": 1, \"bathrooms\": 1, \"numberOfImages\": 12, \"numberOfFloorplans\": 1, \"numberOfVirtualTours\": 0, \"summary\": \"Sixth floor one bedroom apartment with a balcony. \", \"displayAddress\": \"Kingsland Road, Hackney, London, E8\", \"countryCode\": \"GB\", \"location\": {\"latitude\": 51.537706, \"longitude\": -0.076968}, \"images\": [{\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/bebe166ea/173953211/bebe166ea50ba9152ff74268c112bc09_max_476x317.jpeg\", \"url\": \"property-photo/bebe166ea/173953211/bebe166ea50ba9152ff74268c112bc09.jpeg\", \"caption\": \"Open Plan Living\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/631dfcde7/173953211/631dfcde788a28e9f50a21ef2f0cb693_max_476x317.jpeg\", \"url\": \"property-photo/631dfcde7/173953211/631dfcde788a28e9f50a21ef2f0cb693.jpeg\", \"caption\": \"Open Plan Living\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/7b78ddc63/173953211/7b78ddc63b66502cc11df83cfd1fe2ef_max_476x317.jpeg\", \"url\": \"property-photo/7b78ddc63/173953211/7b78ddc63b66502cc11df83cfd1fe2ef.jpeg\", \"caption\": \"Kitchen\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/5e73322c0/173953211/5e73322c062cb650b3a990a26662c03d_max_476x317.jpeg\", \"url\": \"property-photo/5e73322c0/173953211/5e73322c062cb650b3a990a26662c03d.jpeg\", \"caption\": \"Bedroom\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/a84ee0ebc/173953211/a84ee0ebcd79799dea00e277d7107523_max_476x317.jpeg\", \"url\": \"property-photo/a84ee0ebc/173953211/a84ee0ebcd79799dea00e277d7107523.jpeg\", \"caption\": \"Bathroom\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/978d5da16/173953211/978d5da16eb4f1d331863a4c08d41975_max_476x317.jpeg\", \"url\": \"property-photo/978d5da16/173953211/978d5da16eb4f1d331863a4c08d41975.jpeg\", \"caption\": \"Balcony\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/33d658e73/173953211/33d658e73b812efd810e87dcd06c6057_max_476x317.jpeg\", \"url\": \"property-photo/33d658e73/173953211/33d658e73b812efd810e87dcd06c6057.jpeg\", \"caption\": \"External\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/830fa0c94/173953211/830fa0c94b0a0f5994882f16a1ab5e08_max_476x317.jpeg\", \"url\": \"property-photo/830fa0c94/173953211/830fa0c94b0a0f5994882f16a1ab5e08.jpeg\", \"caption\": \"Balcony\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/6b537fe17/173953211/6b537fe17729f57f13082f85ce8c0f0d_max_476x317.jpeg\", \"url\": \"property-photo/6b537fe17/173953211/6b537fe17729f57f13082f85ce8c0f0d.jpeg\", \"caption\": \"External\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/727111e9d/173953211/727111e9d591a9b46c35bc4335f33a22_max_476x317.jpeg\", \"url\": \"property-photo/727111e9d/173953211/727111e9d591a9b46c35bc4335f33a22.jpeg\", \"caption\": \"Open Plan Living\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/7eb52b170/173953211/7eb52b1701323a9544f0f755df1bb1d8_max_476x317.jpeg\", \"url\": \"property-photo/7eb52b170/173953211/7eb52b1701323a9544f0f755df1bb1d8.jpeg\", \"caption\": \"Balcony\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/62820c449/173953211/62820c44954a97cdb3f055401186ee06_max_476x317.jpeg\", \"url\": \"property-photo/62820c449/173953211/62820c44954a97cdb3f055401186ee06.jpeg\", \"caption\": \"External\"}], \"propertySubType\": \"Apartment\", \"tenure\": {\"tenureType\": null}, \"letAvailableDate\": \"2026-04-30T00:00:00Z\", \"listingUpdate\": {\"listingUpdateReason\": \"new\", \"listingUpdateDate\": \"2026-04-01T10:59:04Z\"}, \"price\": {\"amount\": 2400, \"frequency\": \"monthly\", \"currencyCode\": \"GBP\", \"displayPrices\": [{\"displayPrice\": \"\\u00a32,400 pcm\", \"displayPriceQualifier\": \"\"}, {\"displayPrice\": \"\\u00a3554 pw\", \"displayPriceQualifier\": \"\"}]}, \"premiumListing\": false, \"featuredProperty\": true, \"commercialSearchProminenceSelected\": false, \"customer\": {\"branchId\": 68504, \"brandPlusLogoURI\": \"/partner-logo/13328-PRODUCTS_LOGO-1766064025.jpeg\", \"contactTelephone\": \"020 3835 5336\", \"branchDisplayName\": \"Savills Lettings, Hackney\", \"branchName\": \"Hackney\", \"brandTradingName\": \"Savills Lettings\", \"branchLandingPageUrl\": \"/estate-agents/agent/Savills-Lettings/Hackney-68504.html\", \"development\": false, \"mediaServerUrl\": \"https://media.rightmove.co.uk:443\", \"showReducedProperties\": true, \"hasBrandPlus\": true, \"commercial\": false, \"showOnMap\": true, \"enhancedListing\": false, \"developmentContent\": null, \"buildToRent\": false, \"buildToRentBenefits\": [], \"updateDate\": \"2026-04-08T16:12:35Z\", \"brandPlusLogoUrl\": \"https://media.rightmove.co.uk:443/partner-logo/13328-PRODUCTS_LOGO-1766064025.jpeg\", \"primaryBrandColour\": \"#ffdf00\"}, \"distance\": null, \"transactionType\": \"rent\", \"productLabel\": {\"productLabelText\": null, \"spotlightLabel\": false}, \"commercial\": false, \"development\": false, \"residential\": true, \"students\": false, \"auction\": false, \"feesApply\": true, \"feesApplyText\": \"Tenancy Information <br /><br /><br />Client money protection (CMP) provided by RICS: Savills.co.uk/client-money-protection <br /><br />Ombudsman services provided by PRS: theprs.co.uk/contactus <br /><br />Rules for how fees will be charged for Housing Act Tenancies are different to how fees will be charged for Non-Housing Act Tenancies (NHA). All our fees and charges are shown including VAT.<br /><br />HOUSING ACT TENANCIES <br /><br />Holding deposit Equivalent of one weeks rent<br /><br />Changing tenancy documents once signed \\u00a350, or any reasonable costs incurred if these are higher than \\u00a350<br /><br />Deposit: annual rent less than \\u00a350,000 Equivalent to five weeks' rent / annual rent \\u00a350,000 or more Equivalent to six weeks' rent<br /><br />Change of sharer \\u00a350 for one reference and a new tenancy agreement, or any reasonable costs incurred if these are higher than \\u00a350<br /><br />Early termination (at landlord s discretion) All costs incurred by the landlord for allowing early termination including the agent's existing or re-letting fees<br /><br />Stamp Duty Land Tax  Payable on tenancies where the rent exceeds \\u00a3125,000<br /><br />Bank charges if you ask us to pay an overseas account we ll charge \\u00a330 per payment<br /><br />Late, unpaid, returned rent payments 3% above the base rate of Bank of England per annum, calculated daily<br /><br />Lost keys Any cost for the replacement of keys, fobs, security devices or associated items<br /><br />NON-HOUSING ACT TENANCIES (NHA)<br /><br />Pre Tenancy Application Charge (PTAC) Equivalent of one weeks rent or \\u00a3600. If you withdraw from the tenancy: Private tenancies - minimum of \\u00a3300 per person. Company tenancies - minimum of \\u00a3600<br /><br />Tenancy paperwork \\u00a3385<br /><br />Company reference checks \\u00a3120 per reference<br /><br />Deposit Usually equivalent to six weeks rent / with pet eight weeks<br /><br />Check-in and/or out From \\u00a3120 to \\u00a3620 approx. Check your tenancy agreement to confirm who is responsible for paying this charge<br /><br />Call out services (inc out of hours)  \\u00a360 per hour and/or the contractors invoice where your actions or lack of actions result in us or a contractor attending the property to remedy the situation<br /><br />Last minute cancellation of pre-arranged visits  \\u00a360 per visit and any contractor invoice<br /><br />Hourly rate  \\u00a360 plus any replacement costs if we or the landlord have to replace any damaged items, or return any fixtures or fittings to their original position, as per the inventory<br /><br />Any overseas payment charges  \\u00a330 per payment<br /><br />Late/unpaid/returned rent payments  \\u00a360 late payment charge and 3% above the base rate of Bank of England per annum, calculated daily<br /><br />Change of sharer  \\u00a3475 / Additional sharer (at the same time)  \\u00a3100<br /><br />Renewal negotiation  \\u00a3285 for each renewal. If additional referencing is required \\u00a345 per reference<br /><br />Changing tenancy documents once signed \\u00a3180<br /><br />Early termination (at landlord s discretion)  All costs incurred by the landlord for allowing early termination including the agent's existing or re-letting fees<br /><br />Stamp Duty Land Tax  payable on tenancies where the rent exceeds \\u00a3125,000<br /><br />Bank charges if you ask us to pay an overseas account we ll charge \\u00a330 per payment\", \"displaySize\": \"482 sq. ft.\", \"showOnMap\": true, \"propertyUrl\": \"/properties/173953211#/?channel=RES_LET\", \"contactUrl\": \"/property-to-rent/contactBranch.html?propertyId=173953211\", \"staticMapUrl\": null, \"channel\": \"RENT\", \"firstVisibleDate\": \"2026-04-01T10:53:14Z\", \"keywords\": [], \"tags\": [], \"keywordMatchType\": \"no_keyword\", \"saved\": false, \"hidden\": false, \"onlineViewingsAvailable\": false, \"lozengeModel\": {\"matchingLozenges\": []}, \"streetView\": {\"showStreetView\": true}, \"enquiredTimestamp\": null, \"updateDate\": \"2026-04-27T17:39:30Z\", \"enquiryAddedTimestamp\": null, \"enquiryCalledTimestamp\": null, \"reviews\": null, \"keyFeatures\": [{\"order\": 1, \"description\": \"One bedroom\", \"htmlDescription\": \"One bedroom\"}, {\"order\": 2, \"description\": \"Sixth floor\", \"htmlDescription\": \"Sixth floor\"}, {\"order\": 3, \"description\": \"Balcony with stunning views\", \"htmlDescription\": \"Balcony with stunning views\"}, {\"order\": 4, \"description\": \"Canal close by\", \"htmlDescription\": \"Canal close by\"}, {\"order\": 5, \"description\": \"Close to Haggerston Overground Station\", \"htmlDescription\": \"Close to Haggerston Overground Station\"}, {\"order\": 6, \"description\": \"EPC Rating = C\", \"htmlDescription\": \"EPC Rating = C\"}], \"enhancedListing\": false, \"propertyImages\": {\"images\": [{\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/bebe166ea/173953211/bebe166ea50ba9152ff74268c112bc09_max_476x317.jpeg\", \"url\": \"property-photo/bebe166ea/173953211/bebe166ea50ba9152ff74268c112bc09.jpeg\", \"caption\": \"Open Plan Living\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/631dfcde7/173953211/631dfcde788a28e9f50a21ef2f0cb693_max_476x317.jpeg\", \"url\": \"property-photo/631dfcde7/173953211/631dfcde788a28e9f50a21ef2f0cb693.jpeg\", \"caption\": \"Open Plan Living\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/7b78ddc63/173953211/7b78ddc63b66502cc11df83cfd1fe2ef_max_476x317.jpeg\", \"url\": \"property-photo/7b78ddc63/173953211/7b78ddc63b66502cc11df83cfd1fe2ef.jpeg\", \"caption\": \"Kitchen\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/5e73322c0/173953211/5e73322c062cb650b3a990a26662c03d_max_476x317.jpeg\", \"url\": \"property-photo/5e73322c0/173953211/5e73322c062cb650b3a990a26662c03d.jpeg\", \"caption\": \"Bedroom\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/a84ee0ebc/173953211/a84ee0ebcd79799dea00e277d7107523_max_476x317.jpeg\", \"url\": \"property-photo/a84ee0ebc/173953211/a84ee0ebcd79799dea00e277d7107523.jpeg\", \"caption\": \"Bathroom\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/978d5da16/173953211/978d5da16eb4f1d331863a4c08d41975_max_476x317.jpeg\", \"url\": \"property-photo/978d5da16/173953211/978d5da16eb4f1d331863a4c08d41975.jpeg\", \"caption\": \"Balcony\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/33d658e73/173953211/33d658e73b812efd810e87dcd06c6057_max_476x317.jpeg\", \"url\": \"property-photo/33d658e73/173953211/33d658e73b812efd810e87dcd06c6057.jpeg\", \"caption\": \"External\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/830fa0c94/173953211/830fa0c94b0a0f5994882f16a1ab5e08_max_476x317.jpeg\", \"url\": \"property-photo/830fa0c94/173953211/830fa0c94b0a0f5994882f16a1ab5e08.jpeg\", \"caption\": \"Balcony\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/6b537fe17/173953211/6b537fe17729f57f13082f85ce8c0f0d_max_476x317.jpeg\", \"url\": \"property-photo/6b537fe17/173953211/6b537fe17729f57f13082f85ce8c0f0d.jpeg\", \"caption\": \"External\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/727111e9d/173953211/727111e9d591a9b46c35bc4335f33a22_max_476x317.jpeg\", \"url\": \"property-photo/727111e9d/173953211/727111e9d591a9b46c35bc4335f33a22.jpeg\", \"caption\": \"Open Plan Living\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/7eb52b170/173953211/7eb52b1701323a9544f0f755df1bb1d8_max_476x317.jpeg\", \"url\": \"property-photo/7eb52b170/173953211/7eb52b1701323a9544f0f755df1bb1d8.jpeg\", \"caption\": \"Balcony\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/62820c449/173953211/62820c44954a97cdb3f055401186ee06_max_476x317.jpeg\", \"url\": \"property-photo/62820c449/173953211/62820c44954a97cdb3f055401186ee06.jpeg\", \"caption\": \"External\"}], \"mainImageSrc\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/bebe166ea/173953211/bebe166ea50ba9152ff74268c112bc09_max_476x317.jpeg\", \"mainMapImageSrc\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/bebe166ea/173953211/bebe166ea50ba9152ff74268c112bc09_max_296x197.jpeg\"}, \"formattedBranchName\": \" by Savills Lettings, Hackney\", \"addedOrReduced\": \"Added on 01/04/2026\", \"formattedDistance\": \"\", \"heading\": \"Featured Property\", \"propertyTypeFullDescription\": \"1 bedroom apartment\", \"displayStatus\": \"\", \"isRecent\": false, \"hasBrandPlus\": true}, {\"id\": 88024626, \"bedrooms\": 1, \"bathrooms\": 1, \"numberOfImages\": 5, \"numberOfFloorplans\": 1, \"numberOfVirtualTours\": 0, \"summary\": \"Spacious flat with car park and shared garden With wooden floors, granite work tops and shuttered windows this is a stunning flat and is so spacious a couple can really make it a home. (Or a sing... ** Property Reference: 2884153 **\", \"displayAddress\": \"Bishops Court, London, N16\", \"countryCode\": \"GB\", \"location\": {\"latitude\": 51.55232, \"longitude\": -0.083623}, \"images\": [{\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/294f6fb96/88024626/294f6fb96ff46cd435d358704a35674d_max_476x317.jpeg\", \"url\": \"property-photo/294f6fb96/88024626/294f6fb96ff46cd435d358704a35674d.jpeg\", \"caption\": \"Lounge\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/350c3b58b/88024626/350c3b58ba7943928664b9caa40c9363_max_476x317.jpeg\", \"url\": \"property-photo/350c3b58b/88024626/350c3b58ba7943928664b9caa40c9363.jpeg\", \"caption\": \"Kitchen\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/2c6b281f8/88024626/2c6b281f872f5301542430558a3c7a64_max_476x317.jpeg\", \"url\": \"property-photo/2c6b281f8/88024626/2c6b281f872f5301542430558a3c7a64.jpeg\", \"caption\": \"Bathroom \"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/983c00a08/88024626/983c00a080f50b29b2c5197332c0b2e1_max_476x317.jpeg\", \"url\": \"property-photo/983c00a08/88024626/983c00a080f50b29b2c5197332c0b2e1.jpeg\", \"caption\": \"Bedroom \"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/f49e008fe/88024626/f49e008fe8767dd22185908c188b35cd_max_476x317.jpeg\", \"url\": \"property-photo/f49e008fe/88024626/f49e008fe8767dd22185908c188b35cd.jpeg\", \"caption\": \"Car Park\"}], \"propertySubType\": \"Flat\", \"tenure\": {\"tenureType\": null}, \"letAvailableDate\": \"2026-06-27T00:00:00Z\", \"listingUpdate\": {\"listingUpdateReason\": \"new\", \"listingUpdateDate\": \"2026-05-03T16:12:06Z\"}, \"price\": {\"amount\": 2450, \"frequency\": \"monthly\", \"currencyCode\": \"GBP\", \"displayPrices\": [{\"displayPrice\": \"\\u00a32,450 pcm\", \"displayPriceQualifier\": \"\"}, {\"displayPrice\": \"\\u00a3565 pw\", \"displayPriceQualifier\": \"\"}]}, \"premiumListing\": false, \"featuredProperty\": false, \"commercialSearchProminenceSelected\": false, \"customer\": {\"branchId\": 96668, \"brandPlusLogoURI\": \"/partner-logo/11437829-PRODUCTS_LOGO-1766057581.png\", \"contactTelephone\": \"020 3322 3265\", \"branchDisplayName\": \"OpenRent, London\", \"branchName\": \"London\", \"brandTradingName\": \"OpenRent\", \"branchLandingPageUrl\": \"/estate-agents/agent/OpenRent/London-96668.html\", \"development\": false, \"mediaServerUrl\": \"https://media.rightmove.co.uk:443\", \"showReducedProperties\": true, \"hasBrandPlus\": true, \"commercial\": false, \"showOnMap\": true, \"enhancedListing\": false, \"developmentContent\": null, \"buildToRent\": false, \"buildToRentBenefits\": [], \"updateDate\": \"2026-04-22T14:32:16Z\", \"brandPlusLogoUrl\": \"https://media.rightmove.co.uk:443/partner-logo/11437829-PRODUCTS_LOGO-1766057581.png\", \"primaryBrandColour\": null}, \"distance\": null, \"transactionType\": \"rent\", \"productLabel\": {\"productLabelText\": null, \"spotlightLabel\": false}, \"commercial\": false, \"development\": false, \"residential\": true, \"students\": false, \"auction\": false, \"feesApply\": true, \"feesApplyText\": \"OpenRent is the UK's largest letting agent, using online services to make renting properties cheaper and more convenient than ever before - while holding quality and security as our top priorities. <br /><br />\\nOpenRent has never charged any administration or agency fees. <br /><br />\\nUnder the Tenant Fees Act 2019, landlords may charge you a fee if you lose keys or other security devices, or pay your rent late. You may also be asked for other permitted payments, such as a holding deposit when you begin your application. <br /><br />\\nThere are no hidden fees or other charges when renting an OpenRent property. <br /><br />\\nOpenRent is a proud member of the Property Ombudsman and holds comprehensive Client Money Protection via the government-authorised Propertymark Client Money Protection scheme. <br /><br />\\nOpenRent is a registered agent in Scotland with registration number LARN1809026 and is a member of RentSmart Wales with license number #LR-75033-48352. <br /><br />\\n\", \"displaySize\": \"\", \"showOnMap\": true, \"propertyUrl\": \"/properties/88024626#/?channel=RES_LET\", \"contactUrl\": \"/property-to-rent/contactBranch.html?propertyId=88024626\", \"staticMapUrl\": null, \"channel\": \"RENT\", \"firstVisibleDate\": \"2026-05-03T16:06:28Z\", \"keywords\": [], \"tags\": [], \"keywordMatchType\": \"no_keyword\", \"saved\": false, \"hidden\": false, \"onlineViewingsAvailable\": false, \"lozengeModel\": {\"matchingLozenges\": []}, \"streetView\": {\"showStreetView\": true}, \"enquiredTimestamp\": null, \"updateDate\": \"2026-05-03T16:12:06Z\", \"enquiryAddedTimestamp\": null, \"enquiryCalledTimestamp\": null, \"reviews\": null, \"keyFeatures\": [{\"order\": 1, \"description\": \"No Agent Fees\", \"htmlDescription\": \"No Agent Fees\"}, {\"order\": 2, \"description\": \"Property Reference Number: 2884153\", \"htmlDescription\": \"Property Reference Number: 2884153\"}], \"enhancedListing\": false, \"propertyImages\": {\"images\": [{\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/294f6fb96/88024626/294f6fb96ff46cd435d358704a35674d_max_476x317.jpeg\", \"url\": \"property-photo/294f6fb96/88024626/294f6fb96ff46cd435d358704a35674d.jpeg\", \"caption\": \"Lounge\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/350c3b58b/88024626/350c3b58ba7943928664b9caa40c9363_max_476x317.jpeg\", \"url\": \"property-photo/350c3b58b/88024626/350c3b58ba7943928664b9caa40c9363.jpeg\", \"caption\": \"Kitchen\"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/2c6b281f8/88024626/2c6b281f872f5301542430558a3c7a64_max_476x317.jpeg\", \"url\": \"property-photo/2c6b281f8/88024626/2c6b281f872f5301542430558a3c7a64.jpeg\", \"caption\": \"Bathroom \"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/983c00a08/88024626/983c00a080f50b29b2c5197332c0b2e1_max_476x317.jpeg\", \"url\": \"property-photo/983c00a08/88024626/983c00a080f50b29b2c5197332c0b2e1.jpeg\", \"caption\": \"Bedroom \"}, {\"srcUrl\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/f49e008fe/88024626/f49e008fe8767dd22185908c188b35cd_max_476x317.jpeg\", \"url\": \"property-photo/f49e008fe/88024626/f49e008fe8767dd22185908c188b35cd.jpeg\", \"caption\": \"Car Park\"}], \"mainImageSrc\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/294f6fb96/88024626/294f6fb96ff46cd435d358704a35674d_max_476x317.jpeg\", \"mainMapImageSrc\": \"https://media.rightmove.co.uk:443/dir/crop/10:9-16:9/property-photo/294f6fb96/88024626/294f6fb96ff46cd435d358704a35674d_max_296x197.jpeg\"}, \"formattedBranchName\": \" by OpenRent, London\", \"addedOrReduced\": \"Added yesterday\", \"formattedDistance\": \"\", \"heading\": \"\", \"propertyTypeFullDescription\": \"1 bedroom flat\", \"displayStatus\": \"\", \"isRecent\": true, \"hasBrandPlus\": true}], \"_note\": \"Full response contains 25 properties on this page, 170 total. Truncated to 2 for collection sample.\"}",
+          "createdAt": "2026-05-04T05:12:10.000Z",
+          "updatedAt": "2026-05-04T05:12:10.000Z",
+          "uid": "30950434-b59a32c3-acb1-4dbf-abe9-54bc65ef95d2"
+        }
+      ],
+      "createdAt": "2026-05-04T05:12:10.000Z",
+      "updatedAt": "2026-05-04T05:12:10.000Z",
+      "uid": "30950434-ec8b11c2-b67d-479d-9962-0b94a3fbc82c"
+    },
+    {
+      "name": "Property Search - empty result (tight price band)",
+      "id": "026191eb-65d2-4a12-974d-c5eac0f75188",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          },
+          {
+            "key": "Accept",
+            "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+          }
+        ],
+        "url": {
+          "raw": "{{rightmove_base_url}}/property-to-rent/find.html?locationIdentifier=REGION^85389&sortType=6&channel=RENT&includeLetAgreed=false&dontShow=houseShare,retirement,student&propertyTypes=flat&index=0&radius=0.25&maxPrice=500&minBedrooms=3",
+          "host": [
+            "{{rightmove_base_url}}"
+          ],
+          "path": [
+            "property-to-rent",
+            "find.html"
+          ],
+          "query": [
+            {
+              "key": "locationIdentifier",
+              "value": "REGION^85389"
+            },
+            {
+              "key": "sortType",
+              "value": "6"
+            },
+            {
+              "key": "channel",
+              "value": "RENT"
+            },
+            {
+              "key": "includeLetAgreed",
+              "value": "false"
+            },
+            {
+              "key": "dontShow",
+              "value": "houseShare,retirement,student"
+            },
+            {
+              "key": "propertyTypes",
+              "value": "flat"
+            },
+            {
+              "key": "index",
+              "value": "0"
+            },
+            {
+              "key": "radius",
+              "value": "0.25"
+            },
+            {
+              "key": "maxPrice",
+              "value": "500",
+              "description": "Deliberately unrealistic ceiling to produce zero results"
+            },
+            {
+              "key": "minBedrooms",
+              "value": "3"
+            }
+          ]
+        },
+        "description": "Empty search result. Triggered by a price ceiling too low for the area (maxPrice=500 for 3-bed flats in Dalston). The pipeline logs rightmove_no_urls_on_page and breaks the pagination loop. discover_properties returns an empty list."
+      },
+      "response": [
+        {
+          "id": "301358a7-da3c-49e8-97f2-6985e6e6dddd",
+          "name": "Zero results - restrictive price+beds combination",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": ""
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "Text",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "{\"resultCount\": 0, \"properties\": [], \"_note\": \"Zero-result Rightmove search. This shape is returned when no listings match the search criteria (e.g. very restrictive price band, recently-let area, or a region+price combination with no active listings). The pipeline's discover_properties returns an empty list and logs rightmove_no_urls_on_page.\"}",
+          "createdAt": "2026-05-04T05:12:10.000Z",
+          "updatedAt": "2026-05-04T05:12:10.000Z",
+          "uid": "30950434-301358a7-da3c-49e8-97f2-6985e6e6dddd"
+        }
+      ],
+      "createdAt": "2026-05-04T05:12:10.000Z",
+      "updatedAt": "2026-05-04T05:12:10.000Z",
+      "uid": "30950434-026191eb-65d2-4a12-974d-c5eac0f75188"
+    }
+  ]
+}

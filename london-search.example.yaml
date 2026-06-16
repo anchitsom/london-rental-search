@@ -1,0 +1,166 @@
+name: London Flat Search
+description: 2-bed (or large 1-bed) in East/North London, £2,800 max
+version: '2.0'
+
+# Schema v2.0. Each location carries its Rightmove region_id.
+# Region IDs are discovered and verified via scripts/discover_borough_regions.py
+# and then written here. All IDs were live-verified on 2026-05-02.
+#
+# Typeahead endpoint: https://los.rightmove.co.uk/typeahead?query=<term>&limit=10
+# Each match returns { "id": "NNNNN", "type": "REGION", "displayName": "..." }
+# The locationIdentifier is constructed as REGION^NNNNN.
+#
+# Bug note: REGION^85279 (old Islington ID) and REGION^87487 (Farringdon) both
+# redirect to page-not-found or return zero results. They are removed.
+# The old _KNOWN_IDS entry REGION^87490 is Greater London (13,000+ results),
+# not Shoreditch/Hackney -- using it floods the pipeline. Correct IDs are below.
+
+# Wave 2 Agent F (2026-05-04): min_price, max_price, min_bedrooms and
+# max_bedrooms moved to filter-scoring-config.yaml under hard_filters.
+# homehunt/config_loader.py reads them from the unified config when they
+# are absent here, so the Rightmove query stays aligned with the local
+# hard filter without a second source of truth.
+# Only scrape-stage parameters (radius, max_results, delays) remain here.
+defaults:
+  radius: 0.5
+  max_results: 40
+  page_delay: 2.0
+  scrape_delay: 1.0
+
+profiles:
+
+- name: islington_borough
+  description: All Islington neighbourhoods (Angel, Barnsbury, Highbury, Holloway, Tufnell Park, Archway, Finsbury Park)
+  locations:
+  - name: Islington, North London
+    region_id: REGION^87515
+  - name: Barnsbury, North London
+    region_id: REGION^85330
+  - name: Highbury, North London
+    region_id: REGION^70438
+  - name: Holloway, North London
+    region_id: REGION^87514
+  - name: Upper Holloway, North London
+    region_id: REGION^85205
+  - name: Lower Holloway, North London
+    region_id: REGION^85221
+  - name: Tufnell Park, North London
+    region_id: REGION^85222
+  - name: Archway, London
+    region_id: REGION^93727
+  - name: Finsbury Park, North London
+    region_id: REGION^85353
+  - name: Canonbury, North London
+    region_id: REGION^85331
+  - name: Kings Cross, North London
+    region_id: REGION^87399
+
+- name: camden_borough
+  description: All Camden neighbourhoods (Camden Town, Kentish Town, Belsize Park, Hampstead, Primrose Hill, Chalk Farm, Fitzrovia, Bloomsbury, Holborn)
+  locations:
+  - name: Camden Town, North West London
+    region_id: REGION^85262
+  - name: Kentish Town, North West London
+    region_id: REGION^85230
+  - name: Belsize Park, North West London
+    region_id: REGION^70356
+  - name: Hampstead, North West London
+    region_id: REGION^87509
+  - name: Primrose Hill, North West London
+    region_id: REGION^87390
+  - name: Chalk Farm, North West London
+    region_id: REGION^85263
+  - name: Fitzrovia, London
+    region_id: REGION^93764
+  - name: Bloomsbury, Central London
+    region_id: REGION^87494
+  - name: Holborn, Central London
+    region_id: REGION^87513
+
+- name: hackney_borough
+  description: All Hackney neighbourhoods (Shoreditch, Hoxton, Haggerston, Dalston, De Beauvoir, Stoke Newington, Clapton, London Fields, Homerton, Hackney Wick)
+  locations:
+  - name: Shoreditch, East London
+    region_id: REGION^87528
+  - name: Hoxton, North London
+    region_id: REGION^85332
+  - name: Haggerston, East London
+    region_id: REGION^85390
+  - name: Dalston, East London
+    region_id: REGION^85389
+  - name: De Beauvoir Town, North London
+    region_id: REGION^70393
+  - name: Stoke Newington, North London
+    region_id: REGION^85413
+  - name: Clapton, East London
+    region_id: REGION^85455
+  - name: London Fields, East London
+    region_id: REGION^70417
+  - name: Homerton, East London
+    region_id: REGION^70408
+  - name: Hackney Wick, East London
+    region_id: REGION^85371
+
+- name: haringey_borough
+  description: Haringey neighbourhoods (Tottenham Hale, Seven Sisters)
+  locations:
+  - name: Tottenham Hale, North London
+    region_id: REGION^70367
+  - name: Seven Sisters, North London
+    region_id: STATION^8075
+
+- name: waltham_forest_borough
+  description: Waltham Forest neighbourhoods (Blackhorse Road, Walthamstow)
+  locations:
+  - name: Blackhorse Road, East London
+    region_id: STATION^1055
+  - name: Walthamstow, East London
+    region_id: REGION^85310
+
+# OpenRent uses a single London-wide search GET; results are Haversine-pruned
+# against these borough centroids. All 30 Rightmove neighbourhood centroids are
+# listed here at 1.5 km radius so each target neighbourhood has its own tight
+# prune circle (sourced from data/neighbourhood_centroids.json).
+openrent_profiles:
+- name: openrent_london_borough_centroids
+  radius_km: 1.5
+  centroids:
+  # Islington borough
+  - [51.54171,  -0.102149]  # Islington
+  - [51.540558, -0.10824]   # Barnsbury
+  - [51.546562, -0.104125]  # Highbury
+  - [51.54413,  -0.097765]  # Canonbury
+  - [51.532382, -0.123271]  # Kings Cross
+  - [51.549621, -0.108715]  # Holloway
+  - [51.558124, -0.13821]   # Upper Holloway
+  - [51.546115, -0.109293]  # Lower Holloway
+  - [51.557562, -0.128366]  # Tufnell Park
+  - [51.56606,  -0.134553]  # Archway
+  - [51.564593, -0.105857]  # Finsbury Park
+  # Camden borough
+  - [51.539703, -0.142539]  # Camden Town
+  - [51.549108, -0.140742]  # Kentish Town
+  - [51.545376, -0.158432]  # Belsize Park
+  - [51.556545, -0.177989]  # Hampstead
+  - [51.540666, -0.156819]  # Primrose Hill
+  - [51.543337, -0.149991]  # Chalk Farm
+  - [51.516444, -0.133223]  # Fitzrovia
+  - [51.519286, -0.130945]  # Bloomsbury
+  - [51.516956, -0.12526]   # Holborn
+  # Hackney borough
+  - [51.525751, -0.082486]  # Shoreditch
+  - [51.531771, -0.079984]  # Hoxton
+  - [51.531572, -0.071673]  # Haggerston
+  - [51.545718, -0.057575]  # Dalston
+  - [51.537193, -0.080448]  # De Beauvoir Town
+  - [51.560635, -0.084222]  # Stoke Newington
+  - [51.565297, -0.051201]  # Clapton
+  - [51.543057, -0.062491]  # London Fields
+  - [51.548196, -0.046494]  # Homerton
+  - [51.542958, -0.023109]  # Hackney Wick
+  # Haringey borough
+  - [51.5882,   -0.0594]    # Tottenham Hale
+  - [51.5828,   -0.0739]    # Seven Sisters
+  # Waltham Forest borough
+  - [51.5867,   -0.0419]    # Blackhorse Road
+  - [51.5828,   -0.0193]    # Walthamstow

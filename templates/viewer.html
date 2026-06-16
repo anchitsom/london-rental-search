@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rental engine // viewer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="page">
+    <nav class="top-nav" aria-label="primary">
+      <div class="top-nav__brand">Rental engine</div>
+      <div class="top-nav__meta">{{ total_listings }} listings // page {{ page }} of {{ total_pages }}</div>
+    </nav>
+
+    <nav class="tab-nav" aria-label="lifecycle tabs">
+      <a class="tab-nav__item {% if tab == 'main' %}tab-nav__item--active{% endif %}" href="/viewer?tab=main">
+        Main <span class="tab-nav__count">{{ tab_counts.main }}</span>
+      </a>
+      <a class="tab-nav__item {% if tab == 'queued' %}tab-nav__item--active{% endif %}" href="/viewer?tab=queued">
+        Queued <span class="tab-nav__count">{{ tab_counts.queued }}</span>
+      </a>
+      <a class="tab-nav__item {% if tab == 'contacted' %}tab-nav__item--active{% endif %}" href="/viewer?tab=contacted">
+        Contacted <span class="tab-nav__count">{{ tab_counts.contacted }}</span>
+      </a>
+      <a class="tab-nav__item {% if tab == 'shortlisted' %}tab-nav__item--active{% endif %}" href="/viewer?tab=shortlisted">
+        Shortlisted <span class="tab-nav__count">{{ tab_counts.shortlisted }}</span>
+      </a>
+      <a class="tab-nav__item {% if tab == 'rejected' %}tab-nav__item--active{% endif %}" href="/viewer?tab=rejected">
+        Rejected <span class="tab-nav__count">{{ tab_counts.rejected }}</span>
+      </a>
+    </nav>
+
+    <h1 class="headline">
+      {% if tab == 'main' %}Listings (untouched)
+      {% elif tab == 'queued' %}Queued for agent contact
+      {% elif tab == 'contacted' %}Contacted, awaiting outcome
+      {% elif tab == 'shortlisted' %}Shortlist
+      {% elif tab == 'rejected' %}Rejected
+      {% else %}Listings{% endif %}
+    </h1>
+    <p class="subhead">
+      {% if tab == 'main' %}Untouched listings only. Hard filters applied upstream; sorted by score. Use the buttons on each card for one-click triage.
+      {% elif tab == 'queued' %}Listings queued for you to reach out to the agent. Oldest first.
+      {% elif tab == 'contacted' %}Agent contacted, viewing booked or pending. Oldest first so the longest-waiting reply surfaces.
+      {% elif tab == 'shortlisted' %}Working set after a viewing. Oldest first.
+      {% elif tab == 'rejected' %}Listings you have rejected. Newest first.
+      {% else %}Daily browsing surface.{% endif %}
+    </p>
+
+    <section class="controls" aria-label="filter and sort controls">
+      <form class="controls__form" method="get" action="/viewer">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <div class="field">
+          <label class="field__label" for="sort">sort</label>
+          <select class="field__select" id="sort" name="sort">
+            {% for opt in sort_options %}
+              <option value="{{ opt.value }}" {% if opt.value == sort %}selected{% endif %}>{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="source">source</label>
+          <select class="field__select" id="source" name="source">
+            <option value="">any</option>
+            {% for opt in source_options %}
+              <option value="{{ opt }}" {% if opt == source %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="region">region</label>
+          <select class="field__select" id="region" name="region">
+            <option value="">any</option>
+            {% for opt in region_options %}
+              <option value="{{ opt }}" {% if opt == region %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="beds">beds</label>
+          <select class="field__select" id="beds" name="beds">
+            <option value="">any</option>
+            {% for opt in beds_options %}
+              <option value="{{ opt }}" {% if opt|string == beds|string %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="epc">epc band</label>
+          <select class="field__select" id="epc" name="epc">
+            <option value="">any</option>
+            {% for opt in epc_options %}
+              <option value="{{ opt }}" {% if opt == epc %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="newness">newness</label>
+          <select class="field__select" id="newness" name="newness">
+            <option value="">any</option>
+            {% for value, label in newness_options %}
+              <option value="{{ value }}" {% if value == newness %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="max_price">max price</label>
+          <input class="field__input" id="max_price" name="max_price" type="number" min="0" step="50" value="{{ max_price or '' }}" placeholder="any">
+        </div>
+        <div class="field">
+          <label class="field__label" for="min_sqft">min sqft</label>
+          <input class="field__input" id="min_sqft" name="min_sqft" type="number" min="0" step="50" value="{{ min_sqft or '' }}" placeholder="any">
+        </div>
+        <div class="field">
+          <label class="field__label" for="min_score">min score</label>
+          <input class="field__input" id="min_score" name="min_score" type="number" min="0" max="100" step="1" value="{{ min_score or '' }}" placeholder="any">
+        </div>
+        <div class="field">
+          <label class="field__label" for="available_from">available from</label>
+          <input type="date" class="field__input" id="available_from" name="available_from" value="{{ available_from or '' }}">
+        </div>
+        <div class="field">
+          <label class="field__label" for="include_unknown">include unknown</label>
+          <input type="checkbox" id="include_unknown" name="include_unknown" value="1" {% if include_unknown %}checked{% endif %}>
+        </div>
+        {% if glazing_options %}
+        <div class="field">
+          <label class="field__label" for="glazing">glazing</label>
+          <select class="field__select" id="glazing" name="glazing">
+            <option value="">any</option>
+            {% for opt in glazing_options %}
+              <option value="{{ opt }}" {% if opt == glazing %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {% if built_form_options %}
+        <div class="field">
+          <label class="field__label" for="built_form">built form</label>
+          <select class="field__select" id="built_form" name="built_form">
+            <option value="">any</option>
+            {% for opt in built_form_options %}
+              <option value="{{ opt }}" {% if opt == built_form %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        {# Vision tags UI hidden 2026-06-05: feature parked, signal not load-bearing.
+           Backend params on /viewer remain accepted but unsurfaced. #}
+        <div class="controls__actions">
+          <button class="btn btn--primary" type="submit">apply</button>
+          <a class="btn btn--secondary" href="/viewer">reset</a>
+        </div>
+      </form>
+    </section>
+
+    <div class="summary">
+      <span><span class="summary__count">{{ total_listings }}</span> total</span>
+      <span><span class="summary__count">{{ shown_listings }}</span> on this page</span>
+    </div>
+
+    {% if listings %}
+    <ul class="card-list">
+      {% for listing in listings %}
+        {% include "_card.html" %}
+      {% endfor %}
+    </ul>
+
+    <nav class="pagination" aria-label="pagination">
+      <span>page {{ page }} of {{ total_pages }}</span>
+      <span class="pagination__links">
+        {% if page > 1 %}
+          <a class="pagination__link" href="{{ build_query(page=1) }}">first</a>
+          <a class="pagination__link" href="{{ build_query(page=page - 1) }}">prev</a>
+        {% else %}
+          <span class="pagination__link pagination__link--disabled">first</span>
+          <span class="pagination__link pagination__link--disabled">prev</span>
+        {% endif %}
+        <span class="pagination__link" aria-current="page">{{ page }}</span>
+        {% if page < total_pages %}
+          <a class="pagination__link" href="{{ build_query(page=page + 1) }}">next</a>
+          <a class="pagination__link" href="{{ build_query(page=total_pages) }}">last</a>
+        {% else %}
+          <span class="pagination__link pagination__link--disabled">next</span>
+          <span class="pagination__link pagination__link--disabled">last</span>
+        {% endif %}
+      </span>
+    </nav>
+    {% else %}
+    <div class="empty-state">No listings match these filters.</div>
+    {% endif %}
+  </div>
+
+  <script>
+    /*
+     * Photo carousel: vanilla JS, no framework.
+     * Each .carousel scopes its own image set. prev/next buttons step the index.
+     */
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".carousel__nav");
+      if (!btn) return;
+      var carousel = btn.closest(".carousel");
+      if (!carousel) return;
+      var imgs = carousel.querySelectorAll(".carousel__img");
+      if (imgs.length === 0) return;
+      var current = 0;
+      imgs.forEach(function (img, i) {
+        if (img.classList.contains("is-active")) current = i;
+      });
+      var dir = btn.classList.contains("carousel__nav--prev") ? -1 : 1;
+      var next = (current + dir + imgs.length) % imgs.length;
+      imgs[current].classList.remove("is-active");
+      imgs[next].classList.add("is-active");
+      var counter = carousel.querySelector(".carousel__counter");
+      if (counter) counter.textContent = (next + 1) + " / " + imgs.length;
+    });
+
+    /*
+     * EPC chip toggles the EPC details panel for the same card.
+     * The panel is a sibling .epc-panel marked with data-epc-uid matching the
+     * chip's data-epc-uid.
+     */
+    document.addEventListener("click", function (e) {
+      var chip = e.target.closest(".epc-chip");
+      if (!chip || chip.classList.contains("epc-chip--unmatched")) return;
+      var uid = chip.getAttribute("data-epc-uid");
+      if (!uid) return;
+      var panel = document.querySelector('.epc-panel[data-epc-uid="' + uid + '"]');
+      if (!panel) return;
+      var hidden = panel.hasAttribute("hidden");
+      if (hidden) panel.removeAttribute("hidden");
+      else panel.setAttribute("hidden", "");
+      chip.setAttribute("aria-expanded", hidden ? "true" : "false");
+    });
+  </script>
+</body>
+</html>

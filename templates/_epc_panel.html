@@ -1,0 +1,87 @@
+{# Expandable EPC panel. Shows the 20 EPC-derived columns when populated.
+   Hidden by default on the card; expanded on the detail page when the
+   caller sets epc_panel_open=true before including this partial. #}
+<aside class="epc-panel"
+       id="epc-{{ listing.uid }}"
+       data-epc-uid="{{ listing.uid }}"
+       {% if not epc_panel_open %}hidden{% endif %}>
+  <div class="epc-panel__inner">
+    {% if not epc_panel_open %}<h3 class="epc-panel__title">EPC details</h3>{% endif %}
+    <div class="epc-panel__grid">
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">rating</span>
+        <span class="epc-panel__value">{{ listing.epc_rating or '--' }}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">SAP score (current)</span>
+        <span class="epc-panel__value">{% if listing.current_energy_efficiency is not none %}{{ listing.current_energy_efficiency }}{% else %}--{% endif %}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">SAP score (potential)</span>
+        <span class="epc-panel__value">{% if listing.potential_energy_efficiency is not none %}{{ listing.potential_energy_efficiency }}{% else %}--{% endif %}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">floor area</span>
+        <span class="epc-panel__value">
+          {% if listing.total_floor_area_sqm %}
+            {{ listing.total_floor_area_sqm|int }} sqm // {{ listing.total_floor_area_sqft|int }} sqft
+          {% else %}--{% endif %}
+        </span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">habitable rooms</span>
+        <span class="epc-panel__value">{% if listing.number_habitable_rooms is not none %}{{ listing.number_habitable_rooms }}{% else %}--{% endif %}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">heated rooms</span>
+        <span class="epc-panel__value">{% if listing.number_heated_rooms is not none %}{{ listing.number_heated_rooms }}{% else %}--{% endif %}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">built form</span>
+        <span class="epc-panel__value">{{ listing.built_form or '--' }}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">construction age</span>
+        <span class="epc-panel__value">{{ listing.construction_age_band or '--' }}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">glazing</span>
+        <span class="epc-panel__value">
+          {{ listing.windows_description or '--' }}
+          {% if listing.windows_energy_eff %}// {{ listing.windows_energy_eff }}{% endif %}
+        </span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">walls</span>
+        <span class="epc-panel__value">
+          {{ listing.walls_description or '--' }}
+          {% if listing.walls_energy_eff %}// {{ listing.walls_energy_eff }}{% endif %}
+        </span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">roof</span>
+        <span class="epc-panel__value">{{ listing.roof_description or '--' }}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">floor level</span>
+        <span class="epc-panel__value">{{ listing.floor_level or '--' }}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">mains gas</span>
+        <span class="epc-panel__value">{{ listing.mains_gas_flag or '--' }}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">annual heating cost</span>
+        <span class="epc-panel__value">{% if listing.heating_cost_current is not none %}&pound;{{ listing.heating_cost_current }}{% else %}--{% endif %}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">lodgement date</span>
+        <span class="epc-panel__value">{{ listing.epc_lodgement_date or '--' }}</span>
+      </div>
+      <div class="epc-panel__row">
+        <span class="epc-panel__label">inspection date</span>
+        <span class="epc-panel__value">{{ listing.epc_inspection_date or '--' }}</span>
+      </div>
+    </div>
+  </div>
+</aside>

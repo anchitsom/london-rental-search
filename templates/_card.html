@@ -1,0 +1,202 @@
+{# Card per spec section 5: photos, title, source/region chips, headline row,
+   score breakdown, carpet, outdoor, commute, EPC details (expandable), link. #}
+<li class="card" data-uid="{{ listing.uid }}">
+  <div class="carousel" aria-label="photos">
+    {% if listing.images %}
+      {% for img in listing.images %}
+        <img class="carousel__img {% if loop.first %}is-active{% endif %}"
+             src="{{ img }}"
+             alt="photo {{ loop.index }} of {{ listing.images|length }}"
+             loading="lazy">
+      {% endfor %}
+      {% if listing.images|length > 1 %}
+        <button type="button" class="carousel__nav carousel__nav--prev" aria-label="previous photo">&#8592;</button>
+        <button type="button" class="carousel__nav carousel__nav--next" aria-label="next photo">&#8594;</button>
+        <span class="carousel__counter">1 / {{ listing.images|length }}</span>
+      {% endif %}
+    {% else %}
+      <div class="carousel__placeholder">no photos</div>
+    {% endif %}
+  </div>
+
+  <div class="card__body">
+    <h2 class="card__title">
+      <a href="/listing/{{ listing.uid }}?from_tab={{ tab }}">
+        {{ listing.title or listing.address or 'Untitled listing' }}
+      </a>
+    </h2>
+
+    <div class="chips">
+      {% if listing.portal %}
+        <span class="chip chip--source">{{ listing.portal|upper }}</span>
+      {% endif %}
+      {% if listing.region %}
+        <span class="chip chip--region">{{ listing.region }}</span>
+      {% endif %}
+      {% if listing.is_cluster_dupe %}
+        <span class="chip chip--cluster"
+              title="Same flat also listed on another portal">
+          +{{ listing.cluster_other_count }} more
+        </span>
+      {% endif %}
+    </div>
+
+    {% set visible_tags = [] %}
+    {% for tag in [
+      listing.tag_window_style,
+      listing.tag_flooring,
+      listing.tag_building_era,
+      listing.tag_exposed_brick,
+      listing.tag_open_plan,
+      listing.tag_outdoor_access,
+      listing.tag_natural_light,
+      listing.tag_wall_palette,
+      listing.tag_kitchen_finish,
+      listing.tag_view,
+      listing.tag_exposed_beams_or_ducts,
+      listing.tag_ceiling_height,
+      listing.tag_bathroom_finish
+    ] %}
+      {% if tag and tag not in ['unclear', 'not_shown'] %}
+        {% set _ = visible_tags.append(tag) %}
+      {% endif %}
+    {% endfor %}
+    {% if visible_tags %}
+      <ul class="tag-chips">
+        {% for tag in visible_tags %}
+          <li class="tag-chips__chip">{{ tag }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <div class="headline-row">
+      <div class="headline-row__cell">
+        <span class="headline-row__label">price</span>
+        <span class="headline-row__value">{{ listing.price_display }}</span>
+      </div>
+      <div class="headline-row__cell">
+        <span class="headline-row__label">beds</span>
+        <span class="headline-row__value">{% if listing.bedrooms is not none %}{{ listing.bedrooms }}{% else %}<span class="headline-row__value--muted">--</span>{% endif %}</span>
+      </div>
+      <div class="headline-row__cell">
+        <span class="headline-row__label">sqft</span>
+        <span class="headline-row__value">{% if listing.size_sqft %}{{ listing.size_sqft }}{% else %}<span class="headline-row__value--muted">--</span>{% endif %}</span>
+      </div>
+      <div class="headline-row__cell">
+        <span class="headline-row__label">epc</span>
+        {% if listing.has_epc_panel %}
+          <button type="button" class="epc-chip" data-epc-uid="{{ listing.uid }}"
+                  aria-expanded="false" aria-controls="epc-{{ listing.uid }}">
+            {{ listing.epc_rating or '?' }}
+          </button>
+        {% else %}
+          <span class="epc-chip epc-chip--unmatched" title="EPC unmatched">
+            {{ listing.epc_rating or 'EPC unmatched' }}
+          </span>
+        {% endif %}
+      </div>
+      <div class="headline-row__cell">
+        <span class="headline-row__label">score</span>
+        <span class="headline-row__value">{% if listing.score is not none %}{{ listing.score }}{% else %}<span class="headline-row__value--muted">--</span>{% endif %}</span>
+      </div>
+    </div>
+
+    {% if listing.score_breakdown %}
+    <details class="score-breakdown" open>
+      <summary class="score-breakdown__summary">score breakdown</summary>
+      <div class="score-breakdown__bars">
+        {% for label, value in listing.score_breakdown.items() %}
+          <div class="score-bar">
+            <span class="score-bar__label">{{ label }}</span>
+            <span class="score-bar__track">
+              {% set band = 'score-bar__fill--low' %}
+              {% if value >= 70 %}{% set band = 'score-bar__fill--high' %}
+              {% elif value >= 40 %}{% set band = 'score-bar__fill--mid' %}{% endif %}
+              <span class="score-bar__fill {{ band }}" style="width: {{ value|int }}%"></span>
+            </span>
+            <span class="score-bar__value">{{ value|int }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+
+    <div class="meta-row">
+      <div class="meta-row__cell">
+        <span class="meta-row__label">carpet</span>
+        <span class="meta-row__value">
+          {% if listing.carpet_in_bedroom is true %}bedroom: yes
+          {% elif listing.carpet_in_bedroom is false %}bedroom: no
+          {% else %}bedroom: --{% endif %}
+        </span>
+      </div>
+      <div class="meta-row__cell">
+        <span class="meta-row__label">outdoor</span>
+        <span class="meta-row__value">
+          {% if listing.garden and listing.balcony %}garden + balcony
+          {% elif listing.garden %}garden
+          {% elif listing.balcony %}balcony
+          {% else %}--{% endif %}
+        </span>
+      </div>
+      <div class="meta-row__cell">
+        <span class="meta-row__label">canary wharf</span>
+        <span class="meta-row__value">{% if listing.commute_canary_wharf is not none %}{{ listing.commute_canary_wharf }} min{% else %}--{% endif %}</span>
+      </div>
+      <div class="meta-row__cell">
+        <span class="meta-row__label">whitechapel</span>
+        <span class="meta-row__value">{% if listing.commute_whitechapel is not none %}{{ listing.commute_whitechapel }} min{% else %}--{% endif %}</span>
+      </div>
+    </div>
+  </div>
+
+  {% if listing.has_epc_panel %}
+    {% include "_epc_panel.html" %}
+  {% else %}
+    <div class="epc-unmatched">EPC unmatched</div>
+  {% endif %}
+
+  <div class="card__footer">
+    <span>walk to {{ listing.nearest_station or 'station' }}{% if listing.tube_distance %}: {{ listing.tube_distance }} min{% endif %}</span>
+    <a href="{{ listing.url }}" target="_blank" rel="noopener noreferrer">view on Rightmove &#8594;</a>
+  </div>
+
+  {% set status = listing.current_status or 'new' %}
+  {% if status == 'new' %}
+    <div class="card__lifecycle card__lifecycle--quick">
+      <form class="lifecycle-form lifecycle-form--quick" method="post"
+            action="/listing/{{ listing.uid }}/transition">
+        <input type="hidden" name="to_status" value="contact_queued">
+        <input type="hidden" name="redirect_to" value="{{ viewer_redirect_to }}">
+        <button type="submit" value="contact_queued" data-action="accept"
+                title="Queue this listing to contact the agent">
+          accept
+        </button>
+      </form>
+      <form class="lifecycle-form lifecycle-form--quick" method="post"
+            action="/listing/{{ listing.uid }}/transition">
+        <input type="hidden" name="to_status" value="contacted">
+        <input type="hidden" name="redirect_to" value="{{ viewer_redirect_to }}">
+        <button type="submit" value="contacted" data-action="contact-now"
+                title="Mark contacted directly (skip the queued step)">
+          contact
+        </button>
+      </form>
+      <form class="lifecycle-form lifecycle-form--quick" method="post"
+            action="/listing/{{ listing.uid }}/transition">
+        <input type="hidden" name="to_status" value="triage_reject">
+        <input type="hidden" name="reason" value="quick_reject_card">
+        <input type="hidden" name="redirect_to" value="{{ viewer_redirect_to }}">
+        <button type="submit" value="triage_reject"
+                title="Reject without a reason; for nuanced rejects use the detail page">
+          reject
+        </button>
+      </form>
+    </div>
+  {% else %}
+    <div class="card__lifecycle">
+      <span class="lifecycle-badge lifecycle-badge--{{ status }}">{{ status.replace('_', ' ') }}</span>
+      {% if listing.current_status_reason %}<span class="lifecycle-reason">{{ listing.current_status_reason }}</span>{% endif %}
+    </div>
+  {% endif %}
+</li>
