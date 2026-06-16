@@ -1,4 +1,4 @@
-# London Rental Engine
+# London Rental Search
 
 A self-hosted rental-search engine for London. It scrapes the major property
 portals daily, enriches every listing with the signals that actually decide a
