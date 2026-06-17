@@ -6,8 +6,7 @@ flat (commute time, EPC rating, carpet detection, garden, bills, deposit), score
 each one against your weighted preferences, and surfaces a curated shortlist
 instead of the hundreds of near-identical listings the portal UIs show you.
 
-The premise is *revealed preference*. Hand-tuned scoring weights are guesses;
-your rankings on real listings are data. You rank the shortlist by hand, the
+You rank a shortlist by hand, the
 system learns what you actually value from those rankings, and the next run's
 selection reflects it. The goal is to converge on a scoring function that matches
 your taste within a few weeks, then run as a near-zero-effort filter from then on.
